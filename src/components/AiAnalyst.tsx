@@ -101,6 +101,7 @@ interface ChatMessage {
 
 interface AiAnalystProps {
   data: DashboardData;
+  sector?: 'global' | 'agro';
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -111,7 +112,7 @@ function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-function buildContext(data: DashboardData): IntelligenceContext {
+function buildContext(data: DashboardData, sector?: 'global' | 'agro'): IntelligenceContext {
   const earthquakes = (data.earthquakes || []).slice(0, 20).map((eq) => ({
     id: eq.id || generateId(),
     magnitude: eq.magnitude,
@@ -160,6 +161,10 @@ function buildContext(data: DashboardData): IntelligenceContext {
     threats,
     cyberAlerts: [],
     timestamp: new Date().toISOString(),
+    agroMeetings: (data.agro_meetings || []) as unknown[],
+    agroFairs: (data.agro_fairs || []) as unknown[],
+    agroUnrest: (data.agro_unrest || []) as unknown[],
+    sector,
   };
 }
 
@@ -187,7 +192,7 @@ function renderMarkdown(text: string): string {
    Component
    ───────────────────────────────────────────────────────────── */
 
-export default function AiAnalyst({ data }: AiAnalystProps) {
+export default function AiAnalyst({ data, sector = 'global' }: AiAnalystProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
@@ -244,7 +249,7 @@ export default function AiAnalyst({ data }: AiAnalystProps) {
     setIsLoading(true);
 
     try {
-      const context = buildContext(data);
+      const context = buildContext(data, sector);
       const res = await fetch('/api/ai/analyze', {
         method: 'POST',
         headers: getHeaders(),
@@ -280,7 +285,7 @@ export default function AiAnalyst({ data }: AiAnalystProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [inputText, isLoading, data, getHeaders]);
+  }, [inputText, isLoading, data, sector, getHeaders]);
 
   const handleBriefing = useCallback(async () => {
     if (isLoading) return;
@@ -295,7 +300,7 @@ export default function AiAnalyst({ data }: AiAnalystProps) {
     setIsLoading(true);
 
     try {
-      const context = buildContext(data);
+      const context = buildContext(data, sector);
       const res = await fetch('/api/ai/briefing', {
         method: 'POST',
         headers: getHeaders(),
@@ -331,7 +336,7 @@ export default function AiAnalyst({ data }: AiAnalystProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, data, getHeaders]);
+  }, [isLoading, data, sector, getHeaders]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

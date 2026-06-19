@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plane, Satellite, Activity, Sun, AlertTriangle, Camera, Flame, Target,
   CloudLightning, Radiation, Tv, Anchor, Ship, Newspaper,
-  Network, Share2, Radio, Mountain
+  Network, Share2, Radio, Mountain, Sprout, Tractor, Truck
 } from 'lucide-react';
 
 interface LayerPanelProps {
@@ -13,12 +13,13 @@ interface LayerPanelProps {
   activeLayers: any;
   setActiveLayers: React.Dispatch<React.SetStateAction<any>>;
   isMobile?: boolean;
-  theme?: 'core' | 'ghost';
-  setTheme?: (theme: 'core' | 'ghost') => void;
+  theme?: 'core' | 'ghost' | 'ceres';
+  setTheme?: (theme: 'core' | 'ghost' | 'ceres') => void;
 }
 
-const getLayerGroups = (theme: 'core' | 'ghost') => {
+const getLayerGroups = (theme: 'core' | 'ghost' | 'ceres') => {
   const isGhost = theme === 'ghost';
+  const isCeres = theme === 'ceres';
   const phantomPurple = '#B388FF';
   const ghostPriv = '#CE93D8';
   const ghostGov = '#D500F9';
@@ -28,83 +29,133 @@ const getLayerGroups = (theme: 'core' | 'ghost') => {
   const flightGov = isGhost ? ghostGov : '#FF9500';
   const flightMil = '#FF0000';
 
-  return [
-  {
-    label: 'SDK',
-    fullLabel: 'OSIRIS SDK',
-    color: '#1565C0',
-    layers: [
-      { key: 'sdk_sea', label: 'Maritime Lines', icon: Anchor, color: '#4FC3F7', dataKey: 'sdk_entities' },
-      { key: 'sdk_ransomware', label: 'Ransomware Feed', icon: AlertTriangle, color: '#D32F2F', dataKey: 'sdk_entities' },
-    ],
-  },
-  {
-    label: 'AVIATION',
-    fullLabel: 'AVIATION',
-    color: flightCom,
-    layers: [
-      { key: 'flights', label: 'Commercial', icon: Plane, color: flightCom, dataKey: 'commercial_flights' },
-      { key: 'private', label: 'Private', icon: Plane, color: flightPriv, dataKey: 'private_flights' },
-      { key: 'jets', label: 'Private Jets', icon: Plane, color: flightGov, dataKey: 'private_jets' },
-      { key: 'military', label: 'Military', icon: Shield, color: flightMil, dataKey: 'military_flights' },
-    ],
-  },
-  {
-    label: 'MARITIME',
-    fullLabel: 'MARITIME & SPACE',
-    color: '#26C6DA',
-    layers: [
-      { key: 'maritime', label: 'Maritime / Naval', icon: Ship, color: '#26C6DA', dataKey: 'maritime_ships,maritime_ports,maritime_chokepoints' },
-      { key: 'satellites', label: 'Satellites', icon: Satellite, color: '#D4AF37', dataKey: 'satellites' },
-    ],
-  },
-  {
-    label: 'SURVEIL',
-    fullLabel: 'SURVEILLANCE',
-    color: '#7E57C2',
-    layers: [
-      { key: 'cctv', label: 'CCTV Cameras', icon: Camera, color: '#7E57C2', dataKey: 'cameras' },
-      { key: 'live_news', label: 'Live News Feeds', icon: Tv, color: '#EC407A', dataKey: 'live_feeds' },
-    ],
-  },
-  {
-    label: 'HAZARD',
-    fullLabel: 'NATURAL HAZARDS',
-    color: '#F9A825',
-    layers: [
-      { key: 'earthquakes', label: 'Earthquakes (24h)', icon: Activity, color: '#F9A825', dataKey: 'earthquakes' },
-      { key: 'fires', label: 'Active Fires', icon: Flame, color: '#E65100', dataKey: 'fires' },
-      { key: 'weather', label: 'Severe Weather', icon: CloudLightning, color: '#7E57C2', dataKey: 'weather_events' },
-    ],
-  },
-  {
-    label: 'THREAT',
-    fullLabel: 'THREATS & INFRA',
-    color: '#D32F2F',
-    layers: [
-      { key: 'infrastructure', label: 'Nuclear Facilities', icon: Radiation, color: '#26A69A', dataKey: 'infrastructure' },
-      { key: 'global_incidents', label: 'Global Incidents', icon: AlertTriangle, color: '#D32F2F', dataKey: 'gdelt' },
-      { key: 'gps_jamming', label: 'GPS Jamming', icon: Radio, color: '#D32F2F', dataKey: 'gps_jamming' },
-    ],
-  },
-  {
-    label: 'NETWORK',
-    fullLabel: 'NETWORK INTEL',
-    color: '#D32F2F',
-    layers: [
+  if (isCeres) {
+    return [
+      {
+        label: 'AGRO INTEL',
+        fullLabel: 'CERES AGRO INTELLIGENCE',
+        color: '#81C784',
+        layers: [
+          { key: 'agro_meetings', label: 'Coop Meetings', icon: Sprout, color: '#81C784', dataKey: 'agro_meetings' },
+          { key: 'agro_fairs', label: 'Agro Fairs & Expos', icon: Tractor, color: '#FFB74D', dataKey: 'agro_fairs' },
+          { key: 'agro_unrest', label: 'Logistics Protests', icon: Truck, color: '#E57373', dataKey: 'agro_unrest' },
+        ],
+      },
+      {
+        label: 'SURVEIL',
+        fullLabel: 'SURVEILLANCE',
+        color: '#4DD0E1',
+        layers: [
+          { key: 'cctv', label: 'CCTV Cameras', icon: Camera, color: '#4DD0E1', dataKey: 'cameras' },
+          { key: 'live_news', label: 'Live News Feeds', icon: Tv, color: '#F06292', dataKey: 'live_feeds' },
+        ],
+      },
+      {
+        label: 'HAZARDS',
+        fullLabel: 'WEATHER & HAZARDS',
+        color: '#FFB74D',
+        layers: [
+          { key: 'weather', label: 'Severe Weather', icon: CloudLightning, color: '#9575CD', dataKey: 'weather_events' },
+          { key: 'fires', label: 'Active Fires', icon: Flame, color: '#FF8A65', dataKey: 'fires' },
+          { key: 'earthquakes', label: 'Earthquakes (24h)', icon: Activity, color: '#FFD54F', dataKey: 'earthquakes' },
+        ],
+      },
+      {
+        label: 'THREATS',
+        fullLabel: 'INCIDENTS & INTEL',
+        color: '#E57373',
+        layers: [
+          { key: 'global_incidents', label: 'Global Incidents', icon: AlertTriangle, color: '#E57373', dataKey: 'gdelt' },
+        ],
+      },
+      {
+        label: 'DISPLAY',
+        fullLabel: 'DISPLAY LAYERS',
+        color: '#64B5F6',
+        layers: [
+          { key: 'day_night', label: 'Day / Night Cycle', icon: Sun, color: '#64B5F6', dataKey: '' },
+          { key: 'terrain_3d', label: '3D Terrain & Buildings', icon: Mountain, color: '#A1887F', dataKey: '' },
+        ],
+      },
+    ];
+  }
 
-      { key: 'malware', label: 'Live Malware', icon: AlertTriangle, color: '#D32F2F', dataKey: 'malware_threats' },
-    ],
-  },
-  {
-    label: 'DISPLAY',
-    fullLabel: 'DISPLAY',
-    color: '#448AFF',
-    layers: [
-      { key: 'day_night', label: 'Day / Night Cycle', icon: Sun, color: '#448AFF', dataKey: '' },
-      { key: 'terrain_3d', label: '3D Terrain & Buildings', icon: Mountain, color: '#8D6E63', dataKey: '' },
-    ],
-  },
+  return [
+    {
+      label: 'SDK',
+      fullLabel: 'OSIRIS SDK',
+      color: '#1565C0',
+      layers: [
+        { key: 'sdk_sea', label: 'Maritime Lines', icon: Anchor, color: '#4FC3F7', dataKey: 'sdk_entities' },
+        { key: 'sdk_ransomware', label: 'Ransomware Feed', icon: AlertTriangle, color: '#D32F2F', dataKey: 'sdk_entities' },
+      ],
+    },
+    {
+      label: 'AVIATION',
+      fullLabel: 'AVIATION',
+      color: flightCom,
+      layers: [
+        { key: 'flights', label: 'Commercial', icon: Plane, color: flightCom, dataKey: 'commercial_flights' },
+        { key: 'private', label: 'Private', icon: Plane, color: flightPriv, dataKey: 'private_flights' },
+        { key: 'jets', label: 'Private Jets', icon: Plane, color: flightGov, dataKey: 'private_jets' },
+        { key: 'military', label: 'Military', icon: Shield, color: flightMil, dataKey: 'military_flights' },
+      ],
+    },
+    {
+      label: 'MARITIME',
+      fullLabel: 'MARITIME & SPACE',
+      color: '#26C6DA',
+      layers: [
+        { key: 'maritime', label: 'Maritime / Naval', icon: Ship, color: '#26C6DA', dataKey: 'maritime_ships,maritime_ports,maritime_chokepoints' },
+        { key: 'satellites', label: 'Satellites', icon: Satellite, color: '#D4AF37', dataKey: 'satellites' },
+      ],
+    },
+    {
+      label: 'SURVEIL',
+      fullLabel: 'SURVEILLANCE',
+      color: '#7E57C2',
+      layers: [
+        { key: 'cctv', label: 'CCTV Cameras', icon: Camera, color: '#7E57C2', dataKey: 'cameras' },
+        { key: 'live_news', label: 'Live News Feeds', icon: Tv, color: '#EC407A', dataKey: 'live_feeds' },
+      ],
+    },
+    {
+      label: 'HAZARD',
+      fullLabel: 'NATURAL HAZARDS',
+      color: '#F9A825',
+      layers: [
+        { key: 'earthquakes', label: 'Earthquakes (24h)', icon: Activity, color: '#F9A825', dataKey: 'earthquakes' },
+        { key: 'fires', label: 'Active Fires', icon: Flame, color: '#E65100', dataKey: 'fires' },
+        { key: 'weather', label: 'Severe Weather', icon: CloudLightning, color: '#7E57C2', dataKey: 'weather_events' },
+      ],
+    },
+    {
+      label: 'THREAT',
+      fullLabel: 'THREATS & INFRA',
+      color: '#D32F2F',
+      layers: [
+        { key: 'infrastructure', label: 'Nuclear Facilities', icon: Radiation, color: '#26A69A', dataKey: 'infrastructure' },
+        { key: 'global_incidents', label: 'Global Incidents', icon: AlertTriangle, color: '#D32F2F', dataKey: 'gdelt' },
+        { key: 'gps_jamming', label: 'GPS Jamming', icon: Radio, color: '#D32F2F', dataKey: 'gps_jamming' },
+      ],
+    },
+    {
+      label: 'NETWORK',
+      fullLabel: 'NETWORK INTEL',
+      color: '#D32F2F',
+      layers: [
+        { key: 'malware', label: 'Live Malware', icon: AlertTriangle, color: '#D32F2F', dataKey: 'malware_threats' },
+      ],
+    },
+    {
+      label: 'DISPLAY',
+      fullLabel: 'DISPLAY',
+      color: '#448AFF',
+      layers: [
+        { key: 'day_night', label: 'Day / Night Cycle', icon: Sun, color: '#448AFF', dataKey: '' },
+        { key: 'terrain_3d', label: '3D Terrain & Buildings', icon: Mountain, color: '#8D6E63', dataKey: '' },
+      ],
+    },
   ];
 };
 
@@ -192,7 +243,7 @@ function LayerPanel({ data, activeLayers, setActiveLayers, isMobile, theme = 'co
         ))}
 
         {/* MOBILE THEME TOGGLE */}
-        {setTheme && (
+        {setTheme && theme !== 'ceres' && (
           <div className="flex items-center justify-between mt-4 pt-4 border-t border-[var(--border-primary)] px-2">
             <div className="text-[10px] font-bold font-mono tracking-widest text-[var(--text-secondary)]">
               GHOST MODE
@@ -217,6 +268,16 @@ function LayerPanel({ data, activeLayers, setActiveLayers, isMobile, theme = 'co
                 transition={{ type: 'spring', stiffness: 500, damping: 30 }}
               />
             </button>
+          </div>
+        )}
+        {theme === 'ceres' && (
+          <div className="flex items-center justify-between mt-4 pt-4 border-t border-[var(--border-primary)] px-2">
+            <div className="text-[10px] font-bold font-mono tracking-widest text-[var(--cyan-primary)] animate-pulse">
+              CERES ACTIVE
+            </div>
+            <div className="text-[8px] font-mono text-[var(--text-secondary)] tracking-wider">
+              AGRO INTELLIGENCE
+            </div>
           </div>
         )}
 
@@ -326,7 +387,7 @@ function LayerPanel({ data, activeLayers, setActiveLayers, isMobile, theme = 'co
       </div>
 
       {/* DESKTOP THEME TOGGLE */}
-      {setTheme && (
+      {setTheme && theme !== 'ceres' && (
         <div className="mt-auto px-2 pt-6 pb-2 border-t border-[var(--border-primary)] flex flex-col items-center gap-3 relative z-50">
           <div className="text-[9px] font-mono tracking-[0.25em] text-[var(--text-secondary)]">GHOST PROTOCOL</div>
           <button
@@ -349,6 +410,12 @@ function LayerPanel({ data, activeLayers, setActiveLayers, isMobile, theme = 'co
               transition={{ type: 'spring', stiffness: 500, damping: 30 }}
             />
           </button>
+        </div>
+      )}
+      {theme === 'ceres' && (
+        <div className="mt-auto px-2 pt-6 pb-2 border-t border-[var(--border-primary)] flex flex-col items-center gap-3 relative z-50">
+          <div className="text-[9px] font-mono tracking-[0.25em] text-[var(--cyan-primary)] animate-pulse">CERES SECTOR</div>
+          <div className="text-[7px] font-mono text-[var(--text-secondary)] tracking-widest text-center">AGRO COMMAND ACTIVE</div>
         </div>
       )}
 

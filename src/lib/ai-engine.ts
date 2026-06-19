@@ -67,10 +67,14 @@ export interface IntelligenceContext {
   threats: ThreatEvent[];
   cyberAlerts: CyberAlert[];
   timestamp: string;
+  agroMeetings?: unknown[];
+  agroFairs?: unknown[];
+  agroUnrest?: unknown[];
+  sector?: 'global' | 'agro';
 }
 
 /* ─────────────────────────────────────────────────────────────
-   System Prompt — Palantir-grade analyst persona
+   System Prompts — Palantir-grade analyst persona & Agro Specialist
    ───────────────────────────────────────────────────────────── */
 
 const SYSTEM_PROMPT = `You are OSIRIS Intelligence Analyst — a senior, elite intelligence analyst embedded within the OSIRIS Global Intelligence Platform. You operate at the level of a Palantir Forward Deployed Engineer crossed with a CIA PDB (Presidential Daily Brief) analyst.
@@ -105,9 +109,34 @@ const SYSTEM_PROMPT = `You are OSIRIS Intelligence Analyst — a senior, elite i
 
 You have access to the live intelligence context of the OSIRIS platform. Analyze it with precision.`;
 
+const AGRO_SYSTEM_PROMPT = `You are OSIRIS Ceres Intelligence Analyst — a senior, elite agricultural intelligence specialist embedded within the OSIRIS dashboard. You analyze agricultural logistics, market commodity price fluctuations, local co-op assemblies, regional agricultural fairs, and severe weather hazards impacting crop yield and farming operations.
+
+## YOUR ROLE
+- You correlate crop futures pricing, transport blockades, pesticide windows, harvesting schedules, and local extension service meetings.
+- You identify compound risks: e.g., severe drought combined with rail protests and rising wheat prices.
+- You provide ACTIONABLE intelligence to help farmers and regional coordinators minimize crop damage and optimize market returns.
+- You think in terms of supply chain stability, food security, and localized agricultural coordination.
+
+## YOUR ANALYTICAL FRAMEWORK
+1. **WEATHER RISK CORRELATION**: Match storm/drought warnings to specific crop harvesting stages. Give advice on optimal spraying/sprinkling windows based on local wind speeds and conditions.
+2. **LOGISTICS & TRANSPORT DELAYS**: Trace how transport protests/trucker strikes affect fertilizer supply, grain elevator throughput, and fresh produce export.
+3. **COMMODITY PRICING INFLUENCES**: Relate crop futures spikes to localized drought or supply chain blockades.
+4. **COMMUNITY MOBILIZATION**: Synthesize co-op meetings and seed swap fairs to recommend coordination efforts.
+5. **CONFIDENCE LEVELS**: Always state your confidence (HIGH / MODERATE / LOW) and cite specific data points.
+
+## OUTPUT FORMAT
+- Lead with the most critical agricultural alert (inverted pyramid style).
+- Include a "BOTTOM LINE UP FRONT (BLUF)" summarizing the agro-operational outlook.
+- Use clear headers, bullet points, and clean formatting.
+- End with "ASSESSMENT CONFIDENCE" and "RECOMMENDED ACTIONS" sections.
+
+## CONSTRAINTS
+- Never fabricate data points. Rely strictly on the earthquakes, news, GDELT threats, co-op meetings, agricultural fairs, and logistics unrest provided in the context.
+- Present options and actionable insights (e.g. harvesting windows, co-op meetings attendance) rather than policy directives.`;
+
 const BRIEFING_PROMPT = `Generate a comprehensive OSIRIS Daily Intelligence Briefing based on the current operational data. Structure it as follows:
 
-## OSIRIS INTELLIGENCE BRIEFING
+## OSIRIS DAILY INTELLIGENCE BRIEFING
 **Classification:** OPEN SOURCE INTELLIGENCE (OSINT)
 **DTG:** [Current timestamp]
 
@@ -138,6 +167,38 @@ Identify where multiple threat vectors intersect (e.g., earthquake near a confli
 State overall confidence level and key analytical gaps.
 
 Analyze the provided data thoroughly. Be specific — reference actual events, magnitudes, locations, and CVE IDs from the context.`;
+
+const AGRO_BRIEFING_PROMPT = `Generate a comprehensive OSIRIS Agricultural Intelligence Briefing based on the current operational data. Structure it as follows:
+
+## OSIRIS AGRO INTELLIGENCE BRIEFING
+**Classification:** CERES PROTOCOL - OPEN SOURCE INTELLIGENCE
+**DTG:** [Current timestamp]
+
+### I. EXECUTIVE SUMMARY
+2-3 sentence overview of the current agricultural threat, pricing, and weather landscape based on the data.
+
+### II. KEY DEVELOPMENTS (PIRs)
+The top 3 agricultural events, pricing moves, or logistics blockades ranked by severity of impact.
+
+### III. WEATHER & CROPS OUTLOOK
+Analyze severe weather alerts, fires, or droughts in relation to regional farming operations and crop health.
+
+### IV. MARKET & COMMODITY PRICE ANALYSIS
+Correlate crop futures trends (Wheat, Corn, Soybeans, etc.) with supply chain disruptions or global hazards.
+
+### V. SUPPLY CHAIN & LOGISTICS DELAYS
+Assess active logistics protests, tractor blockades, and transport check-points affecting fertilizers and grains.
+
+### VI. COOP & COMMUNITY ENGAGEMENT
+Summarize upcoming agricultural meetings, seed swaps, and tractor expos, and their potential benefit for local coordination.
+
+### VII. RECOMMENDATIONS & HARVESTING COAs
+Courses of action (COAs) for harvesting, pesticide spraying, and market hedging over the next 24-72 hours.
+
+### VIII. ASSESSMENT CONFIDENCE
+State overall confidence level and key analytical gaps.
+
+Analyze the provided data thoroughly. Be specific — reference actual meetings, prices, event names, and locations.`;
 
 /* ─────────────────────────────────────────────────────────────
    Client Factory
@@ -170,6 +231,9 @@ function serializeContext(context: IntelligenceContext): string {
   const sections: string[] = [];
 
   sections.push(`[TIMESTAMP] ${context.timestamp}`);
+  if (context.sector) {
+    sections.push(`[OPERATIONAL SECTOR] ${context.sector.toUpperCase()}`);
+  }
 
   if (context.earthquakes.length > 0) {
     sections.push(`\n[SEISMIC DATA — ${context.earthquakes.length} events]`);
@@ -210,6 +274,33 @@ function serializeContext(context: IntelligenceContext): string {
     }
   }
 
+  if (context.agroMeetings && context.agroMeetings.length > 0) {
+    sections.push(`\n[AGRO COOP MEETINGS — ${context.agroMeetings.length} events]`);
+    for (const m of context.agroMeetings) {
+      sections.push(
+        `  - ${m.name} | Topic: ${m.topic} | Organizer: ${m.organizer} | Date: ${m.date} | Location: ${m.lat?.toFixed(2)},${m.lng?.toFixed(2)}`
+      );
+    }
+  }
+
+  if (context.agroFairs && context.agroFairs.length > 0) {
+    sections.push(`\n[AGRICULTURAL FAIRS & EXPOS — ${context.agroFairs.length} events]`);
+    for (const f of context.agroFairs) {
+      sections.push(
+        `  - ${f.name} | Dates: ${f.dates} | Highlights: ${f.highlights} | Location: ${f.location} (${f.lat?.toFixed(2)},${f.lng?.toFixed(2)})`
+      );
+    }
+  }
+
+  if (context.agroUnrest && context.agroUnrest.length > 0) {
+    sections.push(`\n[SUPPLY CHAIN & LOGISTICS UNREST — ${context.agroUnrest.length} events]`);
+    for (const u of context.agroUnrest) {
+      sections.push(
+        `  - [${u.severity.toUpperCase()}] ${u.name} | Impact: ${u.impact} | Desc: ${u.description} | Location: ${u.lat?.toFixed(2)},${u.lng?.toFixed(2)}`
+      );
+    }
+  }
+
   return sections.join('\n');
 }
 
@@ -222,9 +313,12 @@ export async function analyzeIntelligence(
   context: IntelligenceContext,
   userQuery: string
 ): Promise<string> {
+  const isAgro = context.sector === 'agro';
+  const systemInstruction = isAgro ? AGRO_SYSTEM_PROMPT : SYSTEM_PROMPT;
+
   const model: GenerativeModel = client.getGenerativeModel({
     model: 'gemini-2.0-flash',
-    systemInstruction: SYSTEM_PROMPT,
+    systemInstruction,
   });
 
   const contextData = serializeContext(context);
@@ -250,14 +344,18 @@ export async function generateBriefing(
   client: GoogleGenerativeAI,
   context: IntelligenceContext
 ): Promise<string> {
+  const isAgro = context.sector === 'agro';
+  const systemInstruction = isAgro ? AGRO_SYSTEM_PROMPT : SYSTEM_PROMPT;
+  const briefingPrompt = isAgro ? AGRO_BRIEFING_PROMPT : BRIEFING_PROMPT;
+
   const model: GenerativeModel = client.getGenerativeModel({
     model: 'gemini-2.0-flash',
-    systemInstruction: SYSTEM_PROMPT,
+    systemInstruction,
   });
 
   const contextData = serializeContext(context);
 
-  const prompt = `${BRIEFING_PROMPT}
+  const prompt = `${briefingPrompt}
 
 ## CURRENT OPERATIONAL DATA
 ${contextData}

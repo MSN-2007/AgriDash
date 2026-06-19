@@ -181,7 +181,7 @@ function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCl
       createDot(map, 'dot-fire', isGhost ? phantomPurple : '#E65100', 10);
       createDot(map, 'dot-cctv', cameraColor, 10);
 
-      const sources = ['flights','military','jets','private-fl','satellites','earthquakes','gdelt','gps-jamming','day-night','cctv','fires','weather','infrastructure','maritime','maritime-choke','maritime-ships','live-news','sigint-news','conflict-zones', 'war-alerts-targets', 'war-alerts-lines', 'balloons', 'radiation', 'ip-sweep-devices', 'ip-sweep-pulse', 'ip-sweep-connections', 'scan-targets', 'sdk-entities', 'sdk-links', 'malware-nodes', 'network-mesh'];
+      const sources = ['flights','military','jets','private-fl','satellites','earthquakes','gdelt','gps-jamming','day-night','cctv','fires','weather','infrastructure','maritime','maritime-choke','maritime-ships','live-news','sigint-news','conflict-zones', 'war-alerts-targets', 'war-alerts-lines', 'balloons', 'radiation', 'ip-sweep-devices', 'ip-sweep-pulse', 'ip-sweep-connections', 'scan-targets', 'sdk-entities', 'sdk-links', 'malware-nodes', 'network-mesh', 'agro-meetings', 'agro-fairs', 'agro-unrest'];
       sources.forEach(s => map.addSource(s, { type: 'geojson', data: EMPTY_FC }));
 
       // Warning icon generator (parameterized — eliminates 3x copy-paste)
@@ -560,6 +560,51 @@ function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCl
         'text-field': ['get','name'], 'text-size': 9, 'text-font': ['Open Sans Regular'],
         'text-offset': [0, 1.2], 'text-allow-overlap': false,
       }, paint: { 'text-color': ['match', ['get','type'], 'military','#D32F2F', 'tanker','#E65100', 'cargo','#26C6DA', '#B0BEC5'], 'text-halo-color': '#000', 'text-halo-width': 1 }});
+
+      // Agro Meetings (Green Sprout style dots)
+      map.addLayer({ id: 'agro-meetings-glow', type: 'circle', source: 'agro-meetings', paint: {
+        'circle-radius': ['interpolate',['linear'],['zoom'], 1,6, 5,12, 10,20],
+        'circle-color': '#22C55E', 'circle-opacity': 0.08, 'circle-blur': 1,
+      }});
+      map.addLayer({ id: 'agro-meetings-dots', type: 'circle', source: 'agro-meetings', paint: {
+        'circle-radius': ['interpolate',['linear'],['zoom'], 1,3, 5,5, 10,8],
+        'circle-color': '#22C55E', 'circle-opacity': 0.85,
+        'circle-stroke-width': 1.5, 'circle-stroke-color': '#FFFFFF', 'circle-stroke-opacity': 0.5,
+      }});
+      map.addLayer({ id: 'agro-meetings-label', type: 'symbol', source: 'agro-meetings', minzoom: 4, layout: {
+        'text-field': ['get','name'], 'text-size': 9, 'text-font': ['Open Sans Regular'],
+        'text-offset': [0, 1.8], 'text-allow-overlap': false,
+      }, paint: { 'text-color': '#22C55E', 'text-halo-color': '#000', 'text-halo-width': 1, 'text-opacity': 0.8 }});
+
+      // Agro Fairs (Gold Wheat style dots)
+      map.addLayer({ id: 'agro-fairs-glow', type: 'circle', source: 'agro-fairs', paint: {
+        'circle-radius': ['interpolate',['linear'],['zoom'], 1,6, 5,12, 10,20],
+        'circle-color': '#F59E0B', 'circle-opacity': 0.08, 'circle-blur': 1,
+      }});
+      map.addLayer({ id: 'agro-fairs-dots', type: 'circle', source: 'agro-fairs', paint: {
+        'circle-radius': ['interpolate',['linear'],['zoom'], 1,3, 5,5, 10,8],
+        'circle-color': '#F59E0B', 'circle-opacity': 0.85,
+        'circle-stroke-width': 1.5, 'circle-stroke-color': '#FFFFFF', 'circle-stroke-opacity': 0.5,
+      }});
+      map.addLayer({ id: 'agro-fairs-label', type: 'symbol', source: 'agro-fairs', minzoom: 4, layout: {
+        'text-field': ['get','name'], 'text-size': 9, 'text-font': ['Open Sans Regular'],
+        'text-offset': [0, 1.8], 'text-allow-overlap': false,
+      }, paint: { 'text-color': '#F59E0B', 'text-halo-color': '#000', 'text-halo-width': 1, 'text-opacity': 0.8 }});
+
+      // Agro Unrest (Orange warning dots)
+      map.addLayer({ id: 'agro-unrest-glow', type: 'circle', source: 'agro-unrest', paint: {
+        'circle-radius': ['interpolate',['linear'],['zoom'], 1,8, 5,14, 10,22],
+        'circle-color': '#EF4444', 'circle-opacity': 0.1, 'circle-blur': 1,
+      }});
+      map.addLayer({ id: 'agro-unrest-dots', type: 'circle', source: 'agro-unrest', paint: {
+        'circle-radius': ['interpolate',['linear'],['zoom'], 1,4, 5,6, 10,9],
+        'circle-color': '#EF4444', 'circle-opacity': 0.9,
+        'circle-stroke-width': 1.5, 'circle-stroke-color': '#FFFFFF', 'circle-stroke-opacity': 0.6,
+      }});
+      map.addLayer({ id: 'agro-unrest-label', type: 'symbol', source: 'agro-unrest', minzoom: 3, layout: {
+        'text-field': ['get','name'], 'text-size': 10, 'text-font': ['Open Sans Bold'],
+        'text-offset': [0, 2], 'text-max-width': 14, 'text-allow-overlap': false,
+      }, paint: { 'text-color': '#EF4444', 'text-halo-color': '#000', 'text-halo-width': 1.5, 'text-opacity': 0.9 }});
 
       setMapReady(true);
     });
@@ -1014,6 +1059,51 @@ function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCl
       });
     });
 
+    // ── Agro Meetings click ──
+    map.on('click', 'agro-meetings-dots', (e: any) => {
+      if (!e.features?.length) return;
+      const p = e.features[0].properties;
+      const coords = e.features[0].geometry.coordinates.slice();
+      popup(coords, `<div style="${pStyle}border:1px solid rgba(34,197,94,0.4);">
+        <div style="color:#22C55E;font-size:12px;font-weight:700;margin-bottom:6px;">🌾 ${p.name}</div>
+        <div style="font-size:9px;color:#aaa;margin-bottom:8px;">${p.type} — ${p.organizer}</div>
+        <div style="display:grid;grid-template-columns:1fr;gap:4px;font-size:10px;margin-bottom:8px;">
+          <div><span style="color:#5C5A54;font-size:8px;">TOPIC</span><br/><span style="color:#E8E6E0;">${p.topic}</span></div>
+          <div style="margin-top:4px;"><span style="color:#5C5A54;font-size:8px;">SCHEDULED</span><br/><span style="color:#E8E6E0;">${new Date(p.date).toLocaleString()}</span></div>
+        </div>
+      </div>`);
+    });
+
+    // ── Agro Fairs click ──
+    map.on('click', 'agro-fairs-dots', (e: any) => {
+      if (!e.features?.length) return;
+      const p = e.features[0].properties as any;
+      const coords = (e.features[0].geometry as any).coordinates;
+      popup(coords, `<div style="${pStyle}border:1px solid rgba(245,158,11,0.4);">
+        <div style="color:#F59E0B;font-size:12px;font-weight:700;margin-bottom:4px;">🚜 ${p.name}</div>
+        <div style="font-size:9px;color:#aaa;margin-bottom:8px;">${p.type} | ${p.location}</div>
+        <div style="display:grid;grid-template-columns:1fr;gap:4px;font-size:10px;margin-bottom:8px;">
+          <div><span style="color:#5C5A54;font-size:8px;">HIGHLIGHTS</span><br/><span style="color:#E8E6E0;">${p.highlights}</span></div>
+          <div style="margin-top:4px;"><span style="color:#5C5A54;font-size:8px;">DATES</span><br/><span style="color:#F59E0B;">${p.dates}</span></div>
+        </div>
+        ${p.url ? `<a href="${p.url}" target="_blank" style="${linkStyle}color:#F59E0B;border:1px solid rgba(245,158,11,0.4);background:rgba(245,158,11,0.1);display:block;text-align:center;box-sizing:border-box;">[ WEBSITE ↗ ]</a>` : ''}
+      </div>`);
+    });
+
+    // ── Agro Unrest click ──
+    map.on('click', 'agro-unrest-dots', (e: any) => {
+      if (!e.features?.length) return;
+      const p = e.features[0].properties as any;
+      const coords = (e.features[0].geometry as any).coordinates;
+      popup(coords, `<div style="${pStyle}border:1px solid rgba(239,68,68,0.4);box-shadow:inset 0 0 12px rgba(239,68,68,0.15);">
+        <div style="color:#EF4444;font-size:12px;font-weight:700;margin-bottom:6px;">⚠️ PROTEST BLOCKADE [ ${p.severity} ]</div>
+        <div style="font-size:9px;color:#E8E6E0;margin-bottom:8px;line-height:1.4;">${p.description}</div>
+        <div style="display:grid;grid-template-columns:1fr;gap:4px;font-size:10px;">
+          <div><span style="color:#5C5A54;font-size:8px;">IMPACT LEVEL</span><br/><span style="color:#EF4444;font-weight:bold;">${p.impact}</span></div>
+        </div>
+      </div>`);
+    });
+
     return () => { map.remove(); mapRef.current = null; };
   }, []);
 
@@ -1282,6 +1372,24 @@ function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCl
     setGeo('conflict-zones', conflictFeatures);
   }, [mapReady, setGeo]);
 
+  // Agro Meetings
+  useEffect(() => {
+    if (!mapReady) return;
+    setGeo('agro-meetings', activeLayers.agro_meetings && data.agro_meetings ? data.agro_meetings.map((m: any) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [m.lng, m.lat] }, properties: { name: m.name, type: m.type, organizer: m.organizer, date: m.date, topic: m.topic } })) : []);
+  }, [mapReady, data.agro_meetings, activeLayers.agro_meetings, setGeo]);
+
+  // Agro Fairs
+  useEffect(() => {
+    if (!mapReady) return;
+    setGeo('agro-fairs', activeLayers.agro_fairs && data.agro_fairs ? data.agro_fairs.map((f: any) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [f.lng, f.lat] }, properties: { name: f.name, type: f.type, location: f.location, dates: f.dates, highlights: f.highlights, url: f.url } })) : []);
+  }, [mapReady, data.agro_fairs, activeLayers.agro_fairs, setGeo]);
+
+  // Agro Unrest
+  useEffect(() => {
+    if (!mapReady) return;
+    setGeo('agro-unrest', activeLayers.agro_unrest && data.agro_unrest ? data.agro_unrest.map((u: any) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [u.lng, u.lat] }, properties: { name: u.name, type: u.type, severity: u.severity, description: u.description, impact: u.impact } })) : []);
+  }, [mapReady, data.agro_unrest, activeLayers.agro_unrest, setGeo]);
+
 
   // Visibility
   useEffect(() => {
@@ -1289,6 +1397,9 @@ function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCl
     setVis(['eq-circles','eq-label'], activeLayers.earthquakes);
     setVis(['sat-dots'], activeLayers.satellites);
     setVis(['gdelt-dots'], activeLayers.global_incidents);
+    setVis(['agro-meetings-glow','agro-meetings-dots','agro-meetings-label'], activeLayers.agro_meetings);
+    setVis(['agro-fairs-glow','agro-fairs-dots','agro-fairs-label'], activeLayers.agro_fairs);
+    setVis(['agro-unrest-glow','agro-unrest-dots','agro-unrest-label'], activeLayers.agro_unrest);
 
     setVis(['malware-glow','malware-dots','malware-label'], activeLayers.malware);
     setVis(['network-mesh-atmo', 'network-mesh-glow', 'network-mesh-core'], activeLayers.internet_outages || activeLayers.malware);

@@ -8,14 +8,19 @@ import {
   Zap, Shield, Droplets, Gem, Bitcoin, LineChart, Maximize2, Minimize2
 } from 'lucide-react';
 
-interface MarketsPanelProps { data: any; spaceWeather?: any; }
+interface MarketsPanelProps { data: any; spaceWeather?: any; sector?: 'global' | 'agro'; }
 
-const SECTIONS = [
+const GLOBAL_SECTIONS = [
   { key: 'indices', label: 'INDICES', icon: LineChart },
   { key: 'stocks', label: 'DEFENSE', icon: Shield },
   { key: 'oil', label: 'ENERGY', icon: Droplets },
   { key: 'commodities', label: 'COMMODITIES', icon: Gem },
   { key: 'crypto', label: 'CRYPTO', icon: Bitcoin },
+];
+
+const AGRO_SECTIONS = [
+  { key: 'indices', label: 'INDICES', icon: LineChart },
+  { key: 'commodities', label: 'CROPS & LIVE', icon: Gem },
 ];
 
 function Ticker({ name, data: d }: { name: string; data: any }) {
@@ -36,11 +41,19 @@ function Ticker({ name, data: d }: { name: string; data: any }) {
   );
 }
 
-export default function MarketsPanel({ data, spaceWeather }: MarketsPanelProps) {
+export default function MarketsPanel({ data, spaceWeather, sector }: MarketsPanelProps) {
   const [expanded, setExpanded] = useState(true);
   const [maximized, setMaximized] = useState(false);
   const [activeSection, setActiveSection] = useState('stocks');
   const markets = data.markets || {};
+
+  const isAgro = sector === 'agro';
+  const sections = isAgro ? AGRO_SECTIONS : GLOBAL_SECTIONS;
+
+  useEffect(() => {
+    setActiveSection(isAgro ? 'commodities' : 'stocks');
+  }, [sector]);
+
 
   // Ensure portal only renders on client
   const [mounted, setMounted] = useState(false);
@@ -88,7 +101,7 @@ export default function MarketsPanel({ data, spaceWeather }: MarketsPanelProps) 
 
             {/* Section Tabs — icons instead of emojis */}
             <div className="flex gap-0.5 mb-2 overflow-x-auto">
-              {SECTIONS.map(s => {
+              {sections.map(s => {
                 const Icon = s.icon;
                 return (
                   <button key={s.key} onClick={() => setActiveSection(s.key)}

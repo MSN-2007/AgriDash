@@ -21,6 +21,7 @@ const LayerPanel = dynamic(() => import('@/components/LayerPanel'));
 const CameraViewer = dynamic(() => import('@/components/CameraViewer'));
 const OsintPanel = dynamic(() => import('@/components/OsintPanel'));
 const EntityGraphPanel = dynamic(() => import('@/components/EntityGraphPanel'));
+const AiAnalyst = dynamic(() => import('@/components/AiAnalyst'));
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -114,11 +115,86 @@ export default function Dashboard() {
   const [scanTargets, setScanTargets] = useState<any[]>([]);
   const [entityGraphTarget, setEntityGraphTarget] = useState<{ type: string; id: string; label?: string; properties?: Record<string, any> } | null>(null);
   const [demoMode, setDemoMode] = useState(false);
-  const [osirisTheme, setOsirisTheme] = useState<'core'|'ghost'>('ghost');
+  const [osirisTheme, setOsirisTheme] = useState<'core'|'ghost'|'ceres'>('ghost');
+  const [sector, setSector] = useState<'global' | 'agro'>('global');
 
   useEffect(() => {
     document.body.className = osirisTheme === 'core' ? '' : `theme-${osirisTheme}`;
   }, [osirisTheme]);
+
+  const toggleSector = useCallback(() => {
+    setSector(prev => {
+      const next = prev === 'global' ? 'agro' : 'global';
+      if (next === 'agro') {
+        setOsirisTheme('ceres');
+        setActiveLayers(prevLayers => ({
+          ...prevLayers,
+          flights: false,
+          private: false,
+          jets: false,
+          military: false,
+          maritime: false,
+          satellites: false,
+          balloons: false,
+          cctv: true,
+          live_news: true,
+          news_intel: true,
+          earthquakes: false,
+          fires: true,
+          weather: true,
+          radiation: false,
+          infrastructure: false,
+          global_incidents: true,
+          war_alerts: false,
+          gps_jamming: false,
+          day_night: true,
+          cables: false,
+          sdk_sea: false,
+          sdk_air: false,
+          sdk_naval: false,
+          terrain_3d: false,
+          malware: false,
+          agro_meetings: true,
+          agro_fairs: true,
+          agro_unrest: true,
+        }));
+      } else {
+        setOsirisTheme('ghost');
+        setActiveLayers(prevLayers => ({
+          ...prevLayers,
+          flights: false,
+          private: false,
+          jets: false,
+          military: false,
+          maritime: true,
+          satellites: false,
+          balloons: false,
+          cctv: true,
+          live_news: true,
+          news_intel: true,
+          earthquakes: true,
+          fires: false,
+          weather: false,
+          radiation: false,
+          infrastructure: false,
+          global_incidents: true,
+          war_alerts: false,
+          gps_jamming: false,
+          day_night: true,
+          cables: true,
+          sdk_sea: true,
+          sdk_air: true,
+          sdk_naval: true,
+          terrain_3d: false,
+          malware: false,
+          agro_meetings: false,
+          agro_fairs: false,
+          agro_unrest: false,
+        }));
+      }
+      return next;
+    });
+  }, []);
 
   const isMobile = useIsMobile();
   const startTime = useRef(Date.now());
@@ -153,6 +229,9 @@ export default function Dashboard() {
     sdk_naval: true,
     terrain_3d: false,
     malware: false,
+    agro_meetings: false,
+    agro_fairs: false,
+    agro_unrest: false,
   });
   const [liveFeedUrl, setLiveFeedUrl] = useState<string | null>(null);
   const [liveFeedName, setLiveFeedName] = useState('');
@@ -328,9 +407,11 @@ export default function Dashboard() {
   // ── PROGRESSIVE DATA LOADING (request-optimized) ──
   useEffect(() => {
     // Priority 1: Core feeds (always needed for panels)
-    fetchEndpoint('/api/earthquakes');
+    if (sector !== 'agro') {
+      fetchEndpoint('/api/earthquakes');
+    }
     fetchEndpoint('/api/news');
-    const marketTimer = setTimeout(() => fetchEndpoint('/api/markets', d => ({ markets: d })), 800);
+    const marketTimer = setTimeout(() => fetchEndpoint(sector === 'agro' ? '/api/markets?sector=agro' : '/api/markets', d => ({ markets: d })), 800);
 
     // Priority 2: Space Weather (needed for MarketsPanel)
     const spaceTimer = setTimeout(async () => {
@@ -342,16 +423,16 @@ export default function Dashboard() {
 
     // Polling — OPTIMIZED intervals to minimize edge requests
     const intervals = [
-      setInterval(() => fetchEndpoint('/api/earthquakes'), 900000),  // 15 min (was 5)
-      setInterval(() => fetchEndpoint('/api/news'), 1800000),        // 30 min (was 10)
-      setInterval(() => fetchEndpoint('/api/markets', d => ({ markets: d })), 900000), // 15 min (was 5)
+      ...(sector !== 'agro' ? [setInterval(() => fetchEndpoint('/api/earthquakes'), 900000)] : []),
+      setInterval(() => fetchEndpoint('/api/news'), 1800000),
+      setInterval(() => fetchEndpoint(sector === 'agro' ? '/api/markets?sector=agro' : '/api/markets', d => ({ markets: d })), 900000),
     ];
     return () => {
       clearTimeout(marketTimer);
       clearTimeout(spaceTimer);
       intervals.forEach(clearInterval);
     };
-  }, [fetchEndpoint]);
+  }, [fetchEndpoint, sector]);
 
   // ── LAYER-AWARE DATA LOADING — only fetch when layer is toggled ON ──
   const layerFetchedRef = useRef<Set<string>>(new Set());
@@ -438,6 +519,11 @@ export default function Dashboard() {
       layerFetchedRef.current.add('malware');
     }
 
+    // Agro Events (Meetings + Fairs + Logistics)
+    if ((activeLayers.agro_meetings || activeLayers.agro_fairs || activeLayers.agro_unrest) && !layerFetchedRef.current.has('agro_events')) {
+      fetchEndpoint('/api/agro-events', d => ({ agro_meetings: d.meetings, agro_fairs: d.fairs, agro_unrest: d.unrest }));
+      layerFetchedRef.current.add('agro_events');
+    }
 
   }, [activeLayers]);
 
@@ -456,6 +542,9 @@ export default function Dashboard() {
     }
     if (activeLayers.maritime) {
       intervals.push(setInterval(() => fetchEndpoint('/api/maritime', d => ({ maritime_ports: d.ports, maritime_chokepoints: d.chokepoints, maritime_ships: d.ships })), 10000)); // 10s
+    }
+    if (activeLayers.agro_meetings || activeLayers.agro_fairs || activeLayers.agro_unrest) {
+      intervals.push(setInterval(() => fetchEndpoint('/api/agro-events', d => ({ agro_meetings: d.meetings, agro_fairs: d.fairs, agro_unrest: d.unrest })), 600000)); // 10m
     }
     return () => intervals.forEach(clearInterval);
   }, [activeLayers, fetchEndpoint]);
@@ -816,7 +905,25 @@ export default function Dashboard() {
           </svg>
           <div className="flex flex-col items-start gap-0.5">
             <h1 className="text-lg md:text-xl font-bold tracking-[0.4em] text-[#D4AF37] font-mono">OSIRIS</h1>
-            <span className="text-[8px] md:text-[9px] font-mono tracking-[0.2em] opacity-80 uppercase text-[#D4AF37]">GLOBAL INTELLIGENCE COMMAND</span>
+            <span className="text-[8px] md:text-[9px] font-mono tracking-[0.2em] opacity-80 uppercase text-[#D4AF37]">
+              {sector === 'agro' ? 'AGRICULTURAL INTELLIGENCE COMMAND' : 'GLOBAL INTELLIGENCE COMMAND'}
+            </span>
+          </div>
+          {/* Sector Selector Toggle */}
+          <div className="pointer-events-auto flex items-center gap-1.5 ml-6 bg-black/40 border border-[var(--border-primary)] rounded px-2.5 py-1 text-[9px] font-mono">
+            <button
+              onClick={() => { if (sector !== 'global') toggleSector(); }}
+              className={`hover:text-[var(--gold-primary)] transition-colors px-1.5 py-0.5 rounded cursor-pointer ${sector === 'global' ? 'text-[var(--gold-primary)] bg-[var(--gold-primary)]/10 font-bold' : 'text-[var(--text-muted)]'}`}
+            >
+              GLOBAL
+            </button>
+            <span className="text-white/20">|</span>
+            <button
+              onClick={() => { if (sector !== 'agro') toggleSector(); }}
+              className={`hover:text-[var(--cyan-primary)] transition-colors px-1.5 py-0.5 rounded cursor-pointer ${sector === 'agro' ? 'text-[var(--cyan-primary)] bg-[var(--cyan-primary)]/10 font-bold' : 'text-[var(--text-muted)]'}`}
+            >
+              AGRO
+            </button>
           </div>
         </div>
         <div className="flex items-center gap-3 mt-1.5 pl-[44px] min-w-0 pr-4">
@@ -906,7 +1013,7 @@ export default function Dashboard() {
           <AnimatePresence>
             {showMarkets && (
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute right-12 top-1/2 -translate-y-1/2 w-80">
-                <MarketsPanel data={data} spaceWeather={spaceWeather} />
+                <MarketsPanel data={data} spaceWeather={spaceWeather} sector={sector} />
               </motion.div>
             )}
           </AnimatePresence>
@@ -1088,7 +1195,7 @@ export default function Dashboard() {
                       </div>
                     </>
                   )}
-                  {mobilePanel === 'markets' && <MarketsPanel data={data} spaceWeather={spaceWeather} />}
+                  {mobilePanel === 'markets' && <MarketsPanel data={data} spaceWeather={spaceWeather} sector={sector} />}
                   {mobilePanel === 'intel' && <IntelFeed data={data} onLocate={(lat, lng) => { setFlyToLocation({ lat, lng, ts: Date.now() }); setMobilePanel(null); }} />}
                   {mobilePanel === 'search' && (
                     <div className="space-y-2">
@@ -1181,6 +1288,9 @@ export default function Dashboard() {
           onClose={() => setShowEntityGraph(false)}
         />
       )}
+
+      {/* ── AI Analyst Panel ── */}
+      <AiAnalyst data={data} sector={sector} />
 
       {/* ── OVERLAYS ── */}
       <div className="vignette absolute inset-0 pointer-events-none z-[2]" />

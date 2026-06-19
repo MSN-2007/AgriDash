@@ -1,9 +1,9 @@
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * OSIRIS — Financial Markets & Commodities API
- * Defense stocks, oil, gold, silver, natural gas, wheat, crypto
+ * Defense stocks, oil, gold, silver, natural gas, wheat, crypto, agriculture
  * Multiple source fallback: Yahoo Finance → Google Finance scraping → static estimates
  */
 
@@ -12,6 +12,9 @@ const OIL_TICKERS = ['CL=F', 'BZ=F'];
 const COMMODITY_TICKERS = ['GC=F', 'SI=F', 'HG=F', 'NG=F', 'ZW=F', 'ZC=F'];
 const CRYPTO_TICKERS = ['BTC-USD', 'ETH-USD'];
 const INDEX_TICKERS = ['ES=F', 'NQ=F'];
+
+// Ceres / Agro tickers
+const AGRO_TICKERS = ['ZW=F', 'ZC=F', 'ZS=F', 'ZR=F', 'SB=F', 'CC=F', 'KC=F', 'CT=F', 'LE=F', 'HE=F'];
 
 // Yahoo Finance v8 chart API
 async function fetchYahoo(symbol: string): Promise<any | null> {
@@ -92,7 +95,6 @@ async function fetchCoinGecko(): Promise<Record<string, any>> {
 }
 
 async function fetchQuote(symbol: string): Promise<any | null> {
-  // Try Yahoo v8 first, then v6
   let result = await fetchYahoo(symbol);
   if (!result) result = await fetchYahooV6(symbol);
   return result;
@@ -102,20 +104,79 @@ const COMMODITY_NAMES: Record<string, string> = {
   'GC=F': 'Gold', 'SI=F': 'Silver', 'HG=F': 'Copper',
   'NG=F': 'Natural Gas', 'ZW=F': 'Wheat', 'ZC=F': 'Corn',
 };
+
+const AGRO_NAMES: Record<string, string> = {
+  'ZW=F': 'Wheat Futures',
+  'ZC=F': 'Corn Futures',
+  'ZS=F': 'Soybean Futures',
+  'ZR=F': 'Rice Futures',
+  'SB=F': 'Sugar Futures',
+  'CC=F': 'Cocoa Futures',
+  'KC=F': 'Coffee Futures',
+  'CT=F': 'Cotton Futures',
+  'LE=F': 'Live Cattle',
+  'HE=F': 'Lean Hogs',
+};
+
 const OIL_NAMES: Record<string, string> = { 'CL=F': 'WTI Crude', 'BZ=F': 'Brent Crude' };
 const CRYPTO_NAMES: Record<string, string> = { 'BTC-USD': 'Bitcoin', 'ETH-USD': 'Ethereum' };
 const INDEX_NAMES: Record<string, string> = { 'ES=F': 'S&P 500', 'NQ=F': 'Nasdaq 100' };
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    // Fetch all in parallel
+    const { searchParams } = new URL(req.url);
+    const isAgro = searchParams.get('sector') === 'agro';
+
+    if (isAgro) {
+      // Fetch agricultural tickers and general indices
+      const [agroResults, indexResults] = await Promise.all([
+        Promise.all(AGRO_TICKERS.map(async t => ({ symbol: t, data: await fetchQuote(t) }))),
+        Promise.all(INDEX_TICKERS.map(async t => ({ symbol: t, data: await fetchQuote(t) }))),
+      ]);
+
+      const commodities: Record<string, any> = {};
+      for (const { symbol, data } of agroResults) {
+        if (data) commodities[AGRO_NAMES[symbol] || symbol] = data;
+      }
+
+      const indices: Record<string, any> = {};
+      for (const { symbol, data } of indexResults) {
+        if (data) indices[INDEX_NAMES[symbol] || symbol] = data;
+      }
+
+      const scm_alerts: string[] = [
+        '🌾 CERES INTEL: Monitoring global grain flows & export quotas.',
+      ];
+
+      // Add a potential shipping alert specifically for wheat/corn from Panama
+      try {
+        const maritimeRes = await fetch('http://127.0.0.1:3000/api/maritime', { signal: AbortSignal.timeout(3000) });
+        if (maritimeRes.ok) {
+          const maritimeData = await maritimeRes.json();
+          const chokepoints = maritimeData.chokepoints || [];
+          const panama = chokepoints.find((c: any) => c.name === 'Panama Canal');
+          if (panama && (panama.risk === 'CRITICAL' || panama.risk === 'HIGH')) {
+            scm_alerts.push(`🚨 PANAMA CANAL ${panama.risk}: Major congestion delay affecting US grain exports to Asia.`);
+          }
+        }
+      } catch (e) {}
+
+      return NextResponse.json({
+        stocks: {}, oil: {}, commodities, crypto: {}, indices, scm_alerts,
+        timestamp: new Date().toISOString(),
+      }, {
+        headers: { 'Cache-Control': 'no-store' },
+      });
+    }
+
+    // Default global defense stock mode
     const [stockResults, oilResults, commodityResults, yahooResults, indexResults, cgCrypto] = await Promise.all([
       Promise.all(DEFENSE_STOCKS.map(async t => ({ symbol: t, data: await fetchQuote(t) }))),
       Promise.all(OIL_TICKERS.map(async t => ({ symbol: t, data: await fetchQuote(t) }))),
       Promise.all(COMMODITY_TICKERS.map(async t => ({ symbol: t, data: await fetchQuote(t) }))),
       Promise.all(CRYPTO_TICKERS.map(async t => ({ symbol: t, data: await fetchQuote(t) }))),
       Promise.all(INDEX_TICKERS.map(async t => ({ symbol: t, data: await fetchQuote(t) }))),
-      fetchCoinGecko(), // CoinGecko as crypto fallback
+      fetchCoinGecko(),
     ]);
 
     const stocks: Record<string, any> = {};
@@ -127,10 +188,8 @@ export async function GET() {
     const commodities: Record<string, any> = {};
     for (const { symbol, data } of commodityResults) { if (data) commodities[COMMODITY_NAMES[symbol] || symbol] = data; }
 
-    // Crypto: prefer Yahoo, fallback to CoinGecko
     const crypto: Record<string, any> = {};
     for (const { symbol, data } of yahooResults) { if (data) crypto[CRYPTO_NAMES[symbol] || symbol] = data; }
-    // Fill gaps with CoinGecko
     for (const [name, data] of Object.entries(cgCrypto)) {
       if (!crypto[name]) crypto[name] = data;
     }
@@ -138,14 +197,12 @@ export async function GET() {
     const indices: Record<string, any> = {};
     for (const { symbol, data } of indexResults) { if (data) indices[INDEX_NAMES[symbol] || symbol] = data; }
 
-    // --- SCM Integration: Chokepoint-Commodity Correlation ---
     const scm_alerts: string[] = [];
     try {
       const maritimeRes = await fetch('http://127.0.0.1:3000/api/maritime', { signal: AbortSignal.timeout(3000) });
       if (maritimeRes.ok) {
         const maritimeData = await maritimeRes.json();
         const chokepoints = maritimeData.chokepoints || [];
-        
         const hormuz = chokepoints.find((c: any) => c.name === 'Strait of Hormuz');
         const suez = chokepoints.find((c: any) => c.name === 'Suez Canal');
         const panama = chokepoints.find((c: any) => c.name === 'Panama Canal');
@@ -160,19 +217,18 @@ export async function GET() {
           scm_alerts.push(`🚨 PANAMA ${panama.risk}: LNG and Agriculture (Corn/Wheat) shipment delays expected.`);
         }
       }
-    } catch (e) {
-      // Ignore if maritime is unreachable
-    }
+    } catch (e) {}
 
     return NextResponse.json({
       stocks, oil, commodities, crypto, indices, scm_alerts,
       timestamp: new Date().toISOString(),
     }, {
-      headers: { 'Cache-Control': 'no-store' }, // Prevent caching so alerts update real-time
+      headers: { 'Cache-Control': 'no-store' },
     });
   } catch (error) {
     console.error('Markets fetch error:', error);
     return NextResponse.json({ stocks: {}, oil: {}, commodities: {}, crypto: {}, indices: {}, scm_alerts: [], error: 'Failed' }, { status: 500 });
   }
 }
+
 
